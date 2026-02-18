@@ -17,13 +17,13 @@
 
 Стрічка новин спільноти.
 Містить актуальні статті про розробку, огляди IDE та поради для нічного кодингу.
-(screenshots/photo_1.jpg)
+![News Feed](screenshots/photo_1.jpg)
 
 2. Фотогалерея (Community Setup)
 
 Візуальний простір, де учасники діляться фотографіями своїх робочих місць.
 Реалізовано у вигляді адаптивної сітки (Grid Layout).
-(screenshots/photo_2.jpg)
+![News Feed](screenshots/photo_2.jpg)
 
 3. Профіль користувача (User Profile)
 
@@ -34,4 +34,4 @@
 Статистику форуму (кількість постів, репутація)
 
 Персональні дані студента (Прізвище, Група)
-(screenshots/photo_3.jpg)
+![News Feed](screenshots/photo_3.jpg)
