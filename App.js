@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 
 import GalleryScreen from './screens/GalleryScreen';
 import HomeScreen from './screens/HomeScreen';
+import ProfileScreen from './screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -12,8 +13,7 @@ export default function App() {
     <NavigationContainer>
       <Tab.Navigator
         screenOptions={({ route }) => ({
-          headerShown: false,
-          
+          headerShown: false, 
           
           tabBarStyle: { 
             backgroundColor: '#1E1E1E',
@@ -21,19 +21,19 @@ export default function App() {
             height: 60,
             paddingBottom: 5,
           },
-          tabBarActiveTintColor: '#BB86FC', 
-          tabBarInactiveTintColor: '#888888', 
+          tabBarActiveTintColor: '#BB86FC', // Активний колір 
+          tabBarInactiveTintColor: '#888888', // Неактивний
           
           tabBarIcon: ({ focused, color, size }) => {
             let iconName;
 
-            // Логіка для іконок
             if (route.name === 'Головна') {
               iconName = focused ? 'home' : 'home-outline';
             } else if (route.name === 'Фотогалерея') {
               iconName = focused ? 'images' : 'images-outline';
-            } 
-            
+            } else if (route.name === 'Профіль') {
+              iconName = focused ? 'person' : 'person-outline';
+            }
 
             return <Ionicons name={iconName} size={size} color={color} />;
           },
@@ -41,6 +41,7 @@ export default function App() {
       >
         <Tab.Screen name="Головна" component={HomeScreen} />
         <Tab.Screen name="Фотогалерея" component={GalleryScreen} />
+        <Tab.Screen name="Профіль" component={ProfileScreen} />
       </Tab.Navigator>
     </NavigationContainer>
   );

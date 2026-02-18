@@ -75,7 +75,7 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Студент: Твоє Прізвище, Група ІПЗ-2x</Text>
+        <Text style={styles.footerText}>Студент: Отовчиць Ілля, Група ІПЗ-23-4</Text>
       </View>
     </SafeAreaView>
   );
