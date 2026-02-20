@@ -4,9 +4,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { ThemeProvider } from 'styled-components/native';
 import { Ionicons } from '@expo/vector-icons';
 
-
 import { darkTheme } from './theme/themes';
 import StoreScreen from './screens/StoreScreen';
+import CommunityScreen from './screens/CommunityScreen'; 
 
 const Tab = createBottomTabNavigator();
 
@@ -19,18 +19,27 @@ export default function App() {
             headerShown: false,
             tabBarStyle: {
               backgroundColor: darkTheme.background,
-              borderTopColor: darkTheme.surfaceLight,
+              borderTopColor: darkTheme.surfaceLight || '#2a475e',
+              height: 60,
+              paddingBottom: 10,
             },
             tabBarActiveTintColor: darkTheme.accent,
             tabBarInactiveTintColor: darkTheme.subText,
             tabBarIcon: ({ focused, color, size }) => {
               let iconName;
-              if (route.name === 'Store') iconName = 'bag-handle';
+
+              if (route.name === 'Store') {
+                iconName = focused ? 'bag-handle' : 'bag-handle-outline';
+              } else if (route.name === 'Community') {
+                iconName = focused ? 'people' : 'people-outline';
+              }
+
               return <Ionicons name={iconName} size={size} color={color} />;
             },
           })}
         >
           <Tab.Screen name="Store" component={StoreScreen} />
+          <Tab.Screen name="Community" component={CommunityScreen} />
         </Tab.Navigator>
       </NavigationContainer>
     </ThemeProvider>
