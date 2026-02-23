@@ -1,29 +1,27 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Modal,
-  SafeAreaView,
-  StyleSheet, Text,
-  TextInput,
-  TouchableOpacity,
-  View
-} from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Keyboard, Modal, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 
 const BASE_DIR = FileSystem.documentDirectory + 'AppData/';
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState(BASE_DIR);
-  const [files, setFiles] = useState([]);
   const [storageInfo, setStorageInfo] = useState({ total: 0, free: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  const [files, setFiles] = useState([]);
 
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalType, setModalType] = useState('folder'); 
+  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [modalType, setModalType] = useState('folder');
   const [newItemName, setNewItemName] = useState('');
+
+  const [editorVisible, setEditorVisible] = useState(false);
+  const [fileContent, setFileContent] = useState('');
+  const [editingFilePath, setEditingFilePath] = useState('');
+  const [editingFileName, setEditingFileName] = useState('');
+
+  const [infoVisible, setInfoVisible] = useState(false);
+  const [fileInfo, setFileInfo] = useState(null);
 
   useEffect(() => {
     initApp();
@@ -53,7 +51,7 @@ export default function App() {
       const totalSpace = await FileSystem.getTotalDiskCapacityAsync();
       setStorageInfo({ total: totalSpace, free: freeSpace });
     } catch (e) {
-      console.log("Не вдалося отримати статистику пам'яті");
+      console.log("Не вдалося отримати статистику пам'яті:", e);
     }
   };
 
@@ -83,7 +81,7 @@ export default function App() {
   const openCreateModal = (type) => {
     setModalType(type);
     setNewItemName('');
-    setModalVisible(true);
+    setCreateModalVisible(true);
   };
 
   const handleCreateItem = async () => {
@@ -91,55 +89,84 @@ export default function App() {
       Alert.alert('Увага', 'Введіть назву!');
       return;
     }
-
     try {
       if (modalType === 'folder') {
-        const folderPath = currentPath + newItemName;
-        await FileSystem.makeDirectoryAsync(folderPath);
+        await FileSystem.makeDirectoryAsync(currentPath + newItemName);
       } else {
         const fileName = newItemName.endsWith('.txt') ? newItemName : `${newItemName}.txt`;
-        const filePath = currentPath + fileName;
-        await FileSystem.writeAsStringAsync(filePath, 'Новий текстовий файл.\n', { encoding: FileSystem.EncodingType.UTF8 });
+        await FileSystem.writeAsStringAsync(currentPath + fileName, 'Новий текстовий файл.\n');
       }
-      setModalVisible(false);
-      loadDirectory(currentPath); 
+      setCreateModalVisible(false);
+      loadDirectory(currentPath);
     } catch (error) {
-      Alert.alert('Помилка', 'Не вдалося створити елемент. Можливо, така назва вже існує.');
+      Alert.alert('Помилка', 'Не вдалося створити елемент.');
     }
   };
 
   const confirmDelete = (item) => {
-    Alert.alert(
-      'Підтвердження',
-      `Ви дійсно хочете видалити ${item.isDirectory ? 'папку' : 'файл'} "${item.name}"?`,
-      [
-        { text: 'Скасувати', style: 'cancel' },
-        { text: 'Видалити', style: 'destructive', onPress: () => deleteItem(item.path) }
-      ]
-    );
+    Alert.alert('Підтвердження', `Видалити ${item.isDirectory ? 'папку' : 'файл'} "${item.name}"?`, [
+      { text: 'Скасувати', style: 'cancel' },
+      { text: 'Видалити', style: 'destructive', onPress: async () => {
+          await FileSystem.deleteAsync(item.path, { idempotent: true });
+          loadDirectory(currentPath);
+        }
+      }
+    ]);
   };
 
-  const deleteItem = async (path) => {
-    try {
-      await FileSystem.deleteAsync(path, { idempotent: true });
-      loadDirectory(currentPath);
-    } catch (error) {
-      Alert.alert('Помилка', 'Не вдалося видалити елемент');
-    }
-  };
-
-  const handlePressItem = (item) => {
+  const handlePressItem = async (item) => {
     if (item.isDirectory) {
       setCurrentPath(item.path + '/');
     } else {
-      Alert.alert("Файл", "Відкриття файлів додамо в наступному кроці!");
+      if (item.name.endsWith('.txt')) {
+        try {
+          const content = await FileSystem.readAsStringAsync(item.path);
+          setFileContent(content);
+          setEditingFilePath(item.path);
+          setEditingFileName(item.name);
+          setEditorVisible(true);
+        } catch (error) {
+          Alert.alert('Помилка', 'Не вдалося прочитати файл');
+        }
+      } else {
+        Alert.alert('Увага', 'Можна редагувати лише .txt файли');
+      }
+    }
+  };
+
+  const saveFile = async () => {
+    try {
+      Keyboard.dismiss();
+      await FileSystem.writeAsStringAsync(editingFilePath, fileContent);
+      Alert.alert('Успіх', 'Файл збережено!');
+      setEditorVisible(false);
+      loadDirectory(currentPath);
+    } catch (error) {
+      Alert.alert('Помилка', 'Не вдалося зберегти файл');
+    }
+  };
+
+  const showFileInfo = async (item) => {
+    try {
+      const info = await FileSystem.getInfoAsync(item.path);
+      const extension = item.isDirectory ? 'Папка' : item.name.split('.').pop().toUpperCase();
+      const modDate = new Date(info.modificationTime * 1000).toLocaleString('uk-UA');
+      
+      setFileInfo({
+        name: item.name,
+        type: extension,
+        size: formatBytes(info.size),
+        date: modDate
+      });
+      setInfoVisible(true);
+    } catch (error) {
+      Alert.alert('Помилка', 'Не вдалося отримати інформацію');
     }
   };
 
   const goBack = () => {
     if (currentPath !== BASE_DIR) {
-      const newPath = currentPath.replace(/[^/]+\/$/, '');
-      setCurrentPath(newPath);
+      setCurrentPath(currentPath.replace(/[^/]+\/$/, ''));
     }
   };
 
@@ -152,18 +179,23 @@ export default function App() {
   };
 
   const usedSpace = storageInfo.total > 0 ? storageInfo.total - storageInfo.free : 0;
-  const displayPath = currentPath.replace(FileSystem.documentDirectory, '');
 
   const renderItem = ({ item }) => (
-    <TouchableOpacity style={styles.fileItem} onPress={() => handlePressItem(item)}>
-      <View style={styles.itemLeft}>
+    <View style={styles.fileItem}>
+      <TouchableOpacity style={styles.itemLeft} onPress={() => handlePressItem(item)}>
         <MaterialIcons name={item.isDirectory ? "folder" : "insert-drive-file"} size={30} color={item.isDirectory ? "#FFC107" : "#2196F3"} />
         <Text style={styles.fileName} numberOfLines={1}>{item.name}</Text>
-      </View>
-      <TouchableOpacity onPress={() => confirmDelete(item)} style={styles.deleteButton}>
-        <MaterialIcons name="delete-outline" size={24} color="#F44336" />
       </TouchableOpacity>
-    </TouchableOpacity>
+      
+      <View style={styles.itemActions}>
+        <TouchableOpacity onPress={() => showFileInfo(item)} style={styles.actionBtn}>
+          <MaterialIcons name="info-outline" size={24} color="#2196F3" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => confirmDelete(item)} style={styles.actionBtn}>
+          <MaterialIcons name="delete-outline" size={24} color="#F44336" />
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 
   return (
@@ -178,13 +210,13 @@ export default function App() {
       </View>
 
       <View style={styles.toolbar}>
-        <TouchableOpacity style={styles.actionButton} onPress={() => openCreateModal('folder')}>
+        <TouchableOpacity style={[styles.toolbarBtn, {backgroundColor: '#FF9800'}]} onPress={() => openCreateModal('folder')}>
           <MaterialIcons name="create-new-folder" size={20} color="#fff" />
-          <Text style={styles.actionButtonText}>Нова папка</Text>
+          <Text style={styles.toolbarText}>Нова папка</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.actionButton, {backgroundColor: '#4CAF50'}]} onPress={() => openCreateModal('file')}>
+        <TouchableOpacity style={[styles.toolbarBtn, {backgroundColor: '#4CAF50'}]} onPress={() => openCreateModal('file')}>
           <MaterialIcons name="note-add" size={20} color="#fff" />
-          <Text style={styles.actionButtonText}>Новий файл</Text>
+          <Text style={styles.toolbarText}>Новий файл</Text>
         </TouchableOpacity>
       </View>
 
@@ -194,40 +226,72 @@ export default function App() {
             <MaterialIcons name="arrow-back" size={20} color="#333" />
           </TouchableOpacity>
         )}
-        <Text style={styles.breadcrumbText} numberOfLines={1}> {displayPath}</Text>
+        <Text style={styles.breadcrumbText} numberOfLines={1}>
+          Шлях: {currentPath.replace(FileSystem.documentDirectory, '')}
+        </Text>
       </View>
 
       <View style={styles.filesContainer}>
-        {isLoading ? (
-          <ActivityIndicator size="large" color="#2196F3" />
-        ) : files.length === 0 ? (
-          <Text style={styles.emptyText}>Папка порожня</Text>
-        ) : (
-          <FlatList data={files} keyExtractor={(item) => item.path} renderItem={renderItem} contentContainerStyle={styles.listContent} />
-        )}
+        {isLoading ? <ActivityIndicator size="large" color="#2196F3" /> : 
+         files.length === 0 ? <Text style={styles.emptyText}>Папка порожня</Text> : 
+         <FlatList data={files} keyExtractor={item => item.path} renderItem={renderItem} contentContainerStyle={{padding: 15}} />}
       </View>
 
-      <Modal visible={modalVisible} transparent={true} animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              Створити {modalType === 'folder' ? 'папку' : 'файл'}
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder={modalType === 'folder' ? "Назва папки" : "Назва файлу (напр. note.txt)"}
-              value={newItemName}
-              onChangeText={setNewItemName}
-              autoFocus={true}
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={[styles.modalBtn, styles.modalBtnCancel]} onPress={() => setModalVisible(false)}>
-                <Text style={styles.modalBtnText}>Скасувати</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, styles.modalBtnSave]} onPress={handleCreateItem}>
-                <Text style={styles.modalBtnTextSave}>Створити</Text>
+      <Modal visible={createModalVisible} transparent animationType="fade">
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Створити {modalType === 'folder' ? 'папку' : 'файл'}</Text>
+              <TextInput style={styles.input} placeholder="Введіть назву..." value={newItemName} onChangeText={setNewItemName} autoFocus />
+              <View style={styles.modalButtons}>
+                <TouchableOpacity style={[styles.btn, {backgroundColor: '#ccc'}]} onPress={() => { Keyboard.dismiss(); setCreateModalVisible(false); }}><Text>Скасувати</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.btn, {backgroundColor: '#2196F3'}]} onPress={handleCreateItem}><Text style={{color:'#fff'}}>Створити</Text></TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      <Modal visible={editorVisible} animationType="slide">
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <SafeAreaView style={{flex: 1, backgroundColor: '#fff'}}>
+            <View style={styles.editorHeader}>
+              <Text style={styles.editorTitle}>Редактор: {editingFileName}</Text>
+              {/* Нова іконка для згортання клавіатури */}
+              <TouchableOpacity onPress={() => Keyboard.dismiss()}>
+                <MaterialIcons name="keyboard-hide" size={28} color="#fff" />
               </TouchableOpacity>
             </View>
+            <TextInput 
+              style={styles.editorInput} 
+              multiline 
+              value={fileContent} 
+              onChangeText={setFileContent} 
+              textAlignVertical="top"
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={[styles.btn, {backgroundColor: '#ccc', margin: 15}]} onPress={() => { Keyboard.dismiss(); setEditorVisible(false); }}><Text>Скасувати</Text></TouchableOpacity>
+              <TouchableOpacity style={[styles.btn, {backgroundColor: '#4CAF50', margin: 15}]} onPress={saveFile}><Text style={{color:'#fff'}}>Зберегти</Text></TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      <Modal visible={infoVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Властивості</Text>
+            {fileInfo && (
+              <View style={{marginBottom: 20}}>
+                <Text style={styles.infoText}>Назва: <Text style={{fontWeight: 'bold'}}>{fileInfo.name}</Text></Text>
+                <Text style={styles.infoText}>Тип: <Text style={{fontWeight: 'bold'}}>{fileInfo.type}</Text></Text>
+                <Text style={styles.infoText}>Розмір: <Text style={{fontWeight: 'bold'}}>{fileInfo.size}</Text></Text>
+                <Text style={styles.infoText}>Змінено: <Text style={{fontWeight: 'bold'}}>{fileInfo.date}</Text></Text>
+              </View>
+            )}
+            <TouchableOpacity style={[styles.btn, {backgroundColor: '#2196F3', width: '100%'}]} onPress={() => setInfoVisible(false)}>
+              <Text style={{color: '#fff'}}>Закрити</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -240,29 +304,29 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5', paddingTop: 40 },
   header: { backgroundColor: '#2196F3', padding: 20, borderBottomLeftRadius: 15, borderBottomRightRadius: 15, elevation: 4 },
   headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 15 },
-  statsContainer: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: 'rgba(255, 255, 255, 0.2)', padding: 10, borderRadius: 8 },
+  statsContainer: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 8 },
   statsText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-  toolbar: { flexDirection: 'row', justifyContent: 'space-around', padding: 10, backgroundColor: '#fff', marginTop: 10, marginHorizontal: 15, borderRadius: 10, elevation: 2 },
-  actionButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FF9800', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 8 },
-  actionButtonText: { color: '#fff', fontWeight: 'bold', marginLeft: 5 },
-  breadcrumb: { padding: 15, flexDirection: 'row', alignItems: 'center' },
-  backButton: { marginRight: 10, backgroundColor: '#e0e0e0', padding: 5, borderRadius: 5 },
+  toolbar: { flexDirection: 'row', justifyContent: 'space-around', padding: 10, marginTop: 10, marginHorizontal: 15 },
+  toolbarBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 8 },
+  toolbarText: { color: '#fff', fontWeight: 'bold', marginLeft: 5 },
+  breadcrumb: { padding: 15, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderColor: '#eee' },
+  backButton: { marginRight: 15, backgroundColor: '#e0e0e0', padding: 5, borderRadius: 5 },
   breadcrumbText: { fontSize: 14, color: '#333', fontWeight: 'bold', flex: 1 },
   filesContainer: { flex: 1 },
-  listContent: { paddingHorizontal: 15, paddingBottom: 20 },
-  fileItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', padding: 15, marginBottom: 10, borderRadius: 8, elevation: 1 },
+  fileItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', padding: 15, marginBottom: 10, borderRadius: 8, elevation: 2 },
   itemLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   fileName: { fontSize: 16, marginLeft: 15, color: '#333', flex: 1 },
-  deleteButton: { padding: 5 },
+  itemActions: { flexDirection: 'row' },
+  actionBtn: { marginLeft: 10, padding: 5 },
   emptyText: { fontSize: 16, color: '#888', fontStyle: 'italic', textAlign: 'center', marginTop: 50 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { width: '85%', backgroundColor: '#fff', borderRadius: 15, padding: 20, elevation: 5 },
+  modalContent: { width: '85%', backgroundColor: '#fff', borderRadius: 15, padding: 20 },
   modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, textAlign: 'center' },
   input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, fontSize: 16, marginBottom: 20 },
   modalButtons: { flexDirection: 'row', justifyContent: 'space-between' },
-  modalBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', marginHorizontal: 5 },
-  modalBtnCancel: { backgroundColor: '#e0e0e0' },
-  modalBtnSave: { backgroundColor: '#2196F3' },
-  modalBtnText: { color: '#333', fontWeight: 'bold', fontSize: 16 },
-  modalBtnTextSave: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  btn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', marginHorizontal: 5 },
+  editorHeader: { backgroundColor: '#2196F3', padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  editorTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  editorInput: { flex: 1, padding: 15, fontSize: 16, backgroundColor: '#fafafa' },
+  infoText: { fontSize: 16, marginBottom: 8, color: '#333' }
 });
