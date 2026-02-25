@@ -1,50 +1,43 @@
-# Welcome to your Expo app 👋
+**Опис проєкту**
+Мобільний додаток, що реалізує систему авторизації користувачів через Firebase та збереження їхніх персональних даних у хмарному сховищі Cloud Firestore з перевіркою прав доступу.
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+**Реалізований функціонал:**
+- Реєстрація, авторизація та вихід із системи.
+- Збереження сесії користувача (через AsyncStorage).
+- Відновлення забутого пароля через email.
+- Збереження та редагування профілю (ім'я, вік, місто) у Firestore.
+- Видалення акаунту з бази даних із попередньою повторною автентифікацією.
 
-## Get started
+**Технології:**
+- React Native
+- Expo
+- Firebase Authentication
+- Cloud Firestore
+- AsyncStorage
+- React Navigation
 
-1. Install dependencies
+**Скріншоти роботи додатку:**
 
-   ```bash
-   npm install
-   ```
+1. Скріншот 1:
+<img src="./screenshots/1.png" width="300">
 
-2. Start the app
+2. Скріншот 2:
+<img src="./screenshots/2.png" width="300">
 
-   ```bash
-   npx expo start
-   ```
+3. Скріншот 3:
+<img src="./screenshots/3.jpg" width="300">
 
-In the output, you'll find options to open the app in a
+4. Скріншот 4:
+<img src="./screenshots/4.jpg" width="300">
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+5. Скріншот 5:
+<img src="./screenshots/5.jpg" width="300">
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+6. Скріншот 6:
+<img src="./screenshots/6.jpg" width="300">
 
-## Get a fresh project
+7. Скріншот 7:
+<img src="./screenshots/7.jpg" width="300">
 
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+8. Скріншот 8:
+<img src="./screenshots/8.jpg" width="300">
